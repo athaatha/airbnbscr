@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scraper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .text-justify {
+            text-align: justify;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 flex flex-col min-h-screen">
+
+    <header class="bg-gray-800 text-white p-4 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-3xl font-bold">Scraper</h1>
+            <nav>
+                <a href="#" class="text-gray-300 hover:text-gray-100 px-4">Home</a>
+                <a href="#" class="text-gray-300 hover:text-gray-100 px-4">About</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="flex flex-1">
+        <aside class="bg-gray-800 text-white w-64 p-6 hidden sm:block">
+            <h2 class="text-2xl font-bold text-gray-300 mb-6">Menu</h2>
+            <ul class="space-y-4">
+                <li><a href="#" id="menuScrape" class="text-gray-300 hover:text-gray-100 p-2 block">Scrape Data</a></li>
+                <li><a href="#" id="menuProducts" class="text-gray-300 hover:text-gray-100 p-2 block">Products</a></li>
+            </ul>
+        </aside>
+
+        <main class="flex-1 p-6">
+            <div id="scrapeSection" class="max-w-3xl mx-auto bg-gray-800 p-8 rounded-lg shadow-lg space-y-6">
+                <h2 class="text-2xl font-bold text-center">Scrape Data</h2>
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <input type="text" id="url" class="w-full sm:w-3/4 p-3 border border-gray-600 bg-gray-700 text-white rounded-lg" placeholder="Masukkan URL produk ...">
+                    <button id="scrapeButton" class="w-full sm:w-1/4 bg-blue-500 text-white px-4 py-3 rounded-lg font-semibold">Ambil Data</button>
+                </div>
+                <div id="loading" class="hidden text-center mt-4">
+                    <p class="text-gray-400">Mengambil data...</p>
+                    <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500 mx-auto mt-4"></div>
+                </div>
+                <p id="successMessage" class="hidden text-green-400 text-center font-semibold">Data berhasil di scrape!</p>
+            </div>
+
+            <div id="productsSection" class="max-w-7xl mx-auto bg-gray-800 p-6 mt-6 rounded-lg shadow-lg hidden">
+                <h3 class="text-xl font-bold text-center mb-4">Daftar Produk</h3>
+                <div id="results" class="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"></div>
+                <div id="pagination" class="mt-6 text-center"></div>
+            </div>
+        </main>
+    </div>
+
+    <footer class="bg-gray-800 text-gray-300 text-center py-4 mt-auto">
+        <p>&copy; Rizal Zulfikar Web Scraping</p>
+    </footer>
+
+    <div id="modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+        <div class="bg-gray-800 p-6 rounded-lg w-1/2">
+            <h2 id="modalTitle" class="text-xl font-bold mb-4"></h2>
+            <div id="modalDescription" class="text-gray-300 text-justify max-h-60 overflow-y-auto p-2 border border-gray-600 rounded-lg"></div>
+            <button id="closeModal" class="mt-4 px-4 py-2 bg-red-500 text-white rounded">Tutup</button>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('scrapeButton').addEventListener('click', async function() {
+            const url = document.getElementById('url').value;
+            const button = this;
+            const loading = document.getElementById('loading');
+            const successMessage = document.getElementById('successMessage');
+            
+            if (!url) {
+                alert("Masukkan URL terlebih dahulu!");
+                return;
+            }
+            
+            button.classList.add('hidden');
+            loading.classList.remove('hidden');
+            successMessage.classList.add('hidden');
+            
+            try {
+                const response = await fetch("http://127.0.0.1:5000/scrape", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ url })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    successMessage.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error("Error scraping data:", error);
+            }
+            
+            button.classList.remove('hidden');
+            loading.classList.add('hidden');
+        });
+        
+        document.getElementById('menuProducts').addEventListener('click', function() {
+            document.getElementById('scrapeSection').classList.add('hidden');
+            document.getElementById('productsSection').classList.remove('hidden');
+            loadProducts();
+        });
+        
+        document.getElementById('menuScrape').addEventListener('click', function() {
+            document.getElementById('scrapeSection').classList.remove('hidden');
+            document.getElementById('productsSection').classList.add('hidden');
+        });
+
+        async function loadProducts() {
+            const response = await fetch("http://127.0.0.1:5000/products");
+            const data = await response.json();
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = "";
+
+            data.products.forEach(product => {
+                const productCard = document.createElement("div");
+                productCard.className = "border border-gray-600 p-4 rounded-lg bg-gray-700 shadow-sm";
+                productCard.innerHTML = `
+                    <img src="${product.img_url}" class="w-full h-64 object-cover rounded-lg mb-4">
+                    <h3 class="font-bold text-lg text-gray-100 cursor-pointer" data-desc="${product.description}">${product.name}</h3>
+                    <p class="text-green-400 text-xl">${product.price}</p>
+                    <p class="text-yellow-400 font-semibold">Stok: ${product.stock}</p>
+                `;
+                resultsDiv.appendChild(productCard);
+            });
+        }
+
+        document.getElementById('results').addEventListener('click', function(event) {
+            if (event.target.tagName === 'H3') {
+                document.getElementById('modalTitle').textContent = event.target.textContent;
+                document.getElementById('modalDescription').textContent = event.target.getAttribute('data-desc');
+                document.getElementById('modal').classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('closeModal').addEventListener('click', function() {
+            document.getElementById('modal').classList.add('hidden');
+        });
+    </script>
+</body>
+</html>
